@@ -1,14 +1,18 @@
 ---
 title: "Gov 50 Final Project"
-author: "Your Name Here"
-description: "My final project"
+author: "Abril Rodriguez Diaz"
+description: "My final project ideas"
 output:
   distill::distill_article:
     self_contained: false
 ---
 
-
-
 ## Project thoughts
 
-I am interested in exploring data related to...
+I am interested in exploring data related to welfare in Mexico. My main academic interests include welfare issues in Latin America and corresponding potential policies or welfare programs. There are several directions that I might want to take my project in, but I will put my brainstorm below so that I can refer back to my different ideas. 
+
+* **health**: finding factors that might correlate with healthier individuals, per county/city/neighborhood
+* **education**: identifying factors that might influence parents at or below the poverty line to send children to attend primary school. or, identifying factors that push high schoolers to pursue secondary education.
+* **education (contd)**: could maybe do something on the lack of quality public education in basically all of Mexico, basically all of Latam. questioning use of govt budget.
+*smaller, more local issues:*
+* **effects of tourism**: on a particular region, with a particular effect in mind... health, economic wellbeing, etc
