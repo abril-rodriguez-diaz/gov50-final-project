@@ -7,12 +7,178 @@ output:
     self_contained: false
 ---
 
-## Project thoughts
 
-I am interested in exploring data related to welfare in Mexico. My main academic interests include welfare issues in Latin America and corresponding potential policies or welfare programs. There are several directions that I might want to take my project in, but I will put my brainstorm below so that I can refer back to my different ideas. 
+```{r}
+# Loading library
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
 
-* **health**: finding factors that might correlate with healthier individuals, per county/city/neighborhood
-* **education**: identifying factors that might influence parents at or below the poverty line to send children to attend primary school. or, identifying factors that push high schoolers to pursue secondary education.
-* **education (contd)**: could maybe do something on the lack of quality public education in basically all of Mexico, basically all of Latam. questioning use of govt budget.
-*smaller, more local issues:*
-* **effects of tourism**: on a particular region, with a particular effect in mind... health, economic wellbeing, etc
+install.packages("viridis")
+
+```
+
+```{r}
+# Colors
+pink_0 <- "#d1009d"
+pink_1 <- "#fa02bc"
+pink_2 <- "#fc88df"
+pink_3 <- "#ffccf2"
+```
+# Project-Introdction
+
+
+```{r}
+# Loading data
+poverty_data <- read_csv("poverty.csv")
+education_data <- read_csv("education.csv")
+
+poverty_data
+education_data
+
+# Join together the datasets
+
+master_data <- poverty_data |>
+  left_join(education_data, by = "State")
+
+master_data <- master_data |>
+  select(State, `Amount in Poverty`, `Higher Ed, Female`, `Higher Ed, Male`, `Total Population` ) |>
+  mutate(higher_ed_total = `Higher Ed, Female` + `Higher Ed, Male`) |>
+  select(State, `Amount in Poverty`, higher_ed_total, `Total Population`) |>
+  mutate(poverty_prop = `Amount in Poverty` / `Total Population`,
+         higher_ed_prop = (higher_ed_total / `Total Population`) / 1000) # Divided by 1000 to have all data on the same scale, i.e. in thousands
+  
+master_data
+```
+
+```{r}
+# Visualizations
+
+scatterplot <- master_data |>
+  ggplot(mapping = aes(x = higher_ed_prop, y = poverty_prop)) + geom_point(color = pink_1) + geom_smooth(method = "lm", color = pink_1, se = TRUE, fill = pink_2) + theme(panel.background = element_rect(fill = pink_3)) + 
+  labs(x = "Percent of State Enrolled in Upper Secondary Education", y = "Percent of State in Poverty", 
+       title = "Poverty and Upper Secondary Education", 
+       subtitle = "Among Mexican States",
+       source = "Statista"
+       ) +
+  theme(
+    plot.title = element_text(color = pink_0),
+    axis.title.x = element_text(color = pink_0),
+    axis.title.y = element_text(color = pink_0),
+    plot.subtitle = element_text(color = pink_0),
+    axis.text.x = element_text(color = pink_0),
+    axis.text.y = element_text(color = pink_0),
+    
+  )
+
+scatterplot
+
+
+
+
+```
+
+```{r}
+# Linear Regression
+
+regression <- lm(poverty_prop ~ higher_ed_prop, data = master_data)
+
+summary(regression)
+```
+
+
+Any 
+
+
+```{r}
+#load package for choropleth map
+library(geojsonio)
+
+mexico <- geojson_read("/Users/abril/Gov 50 Problem Sets/gov50?/Gov 50 Final Project/gadm41_MEX_1.json",  what = "sp")
+
+# fortify (tidy) data
+library(broom)
+mexico_fortified <- tidy(mexico)
+
+# easily plotting the basic map after fortification, using ggplot2
+map <- ggplot() + 
+  geom_polygon(data = mexico_fortified, aes(x = long, y = lat, group = group), fill = pink_3, color = pink_0) + theme_void() + coord_map()
+
+map
+
+
+```
+```{r}
+# csvs that exclude mexico city so that they can be matched with the data
+
+education_map_data <- read_csv("education_map.csv")
+poverty_map_data <- read_csv("poverty_map.csv")
+
+education_map_data
+poverty_map_data
+
+# attempting to globalize "higher_ed_prop":
+# total population by state
+population_global <- poverty_map_data |>
+  select(State, `Total Population`)
+
+population_global
+
+# total higher education by state
+higher_ed_global <- education_map_data |>
+  select(State, `Higher Ed, Female`, `Higher Ed, Male`) |>
+  mutate(higher_ed_total_1 = `Higher Ed, Female` + `Higher Ed, Male`) |>
+  select(State, higher_ed_total_1) |>
+  mutate(higher_ed_total_1 = (higher_ed_total_1 / 100)) # putting in thousands to match
+
+higher_ed_global
+
+# for map data
+higher_ed_prop <- population_global |>
+  inner_join(higher_ed_global, by = "State") |>
+  mutate(higher_ed_prop = higher_ed_total_1 / `Total Population`)
+
+higher_ed_prop
+
+
+# completed map data
+map_data <- higher_ed_prop |>
+  select(State, higher_ed_prop)
+
+map_data
+
+```
+
+
+```{r}
+
+# merge data
+merged_data <- merge(mexico_fortified, map_data, by = "State")
+
+# Merge the spatial data with your dataset based on the state column
+merged_data <- merge(mexico_fortified, map_data, by.x = "state_column", by.y = "state_column", all.x = TRUE)
+map_merged_data <- merge(mexico_fortified, map_data, by.x="State")
+
+# now it is time to use our data to customize the choropleth map
+# I want the map to show proportions of enrollment in higher education by state
+# we must use the variable "higher_ed_prop"
+library(viridis)
+ed_map <- ggplot() + 
+  geom_polygon(data = mexico_fortified, aes(fill = higher_ed_prop, x = long, y = lat, group = group), linewidth = 0, alpha = 0.9) + 
+  theme_void() + 
+  scale_fill_viridis(trans = "log", breaks = c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100), name = "proportion of higher ed", guide = guide_legend( keyheight = unit(3, units = "mm"), keywidth=unit(12, units = "mm"), label.position = "bottom", title.position = 'top', nrow=1)) +
+  labs(title = "Title",
+       subtitle = "Sbtitle",
+       caption = "Data: INSEE | Creation: Yan Holtz | r-graph-gallery.com") + 
+  theme(
+    text = element_text(color = pink_0),
+    plot.background = element_rect(fill = pink_3),
+    panel.background = element_rect(fill = pink_2),
+    legend.background = element_rect(fill = pink_3),
+  ) + 
+  coord_map()
+
+ed_map
+
+```
+```
